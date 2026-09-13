@@ -1,0 +1,2 @@
+export const redactionConfig:Record<string,{label:string;background:string;border:string}>={PERSONAL_INFO:{label:"Personal information",background:"#dbeafe",border:"#2563eb"},CONFIDENTIAL:{label:"Confidential",background:"#fef3c7",border:"#d97706"},PRIVILEGED:{label:"Privileged",background:"#fce7f3",border:"#db2777"},HIGHLIGHT:{label:"Highlight",background:"#dcfce7",border:"#16a34a"},OVERLAP:{label:"Overlap",background:"#ddd6fe",border:"#7c3aed"}};
+export const styleFor=(name:string)=>redactionConfig[name]??{label:name,background:"#e5e7eb",border:"#6b7280"};
