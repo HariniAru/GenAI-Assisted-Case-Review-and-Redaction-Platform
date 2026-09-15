@@ -115,8 +115,6 @@ def delete(redaction_id: int, db: Session = Depends(get_db)):  # noqa: B008
     item = db.get(Redaction, redaction_id)
     if item is None:
         raise HTTPException(404, "Redaction not found")
-    if item.source != "MANUAL":
-        raise HTTPException(409, "AI redactions are read-only")
     ensure_case_open(item.activity)
     db.delete(item)
     db.commit()

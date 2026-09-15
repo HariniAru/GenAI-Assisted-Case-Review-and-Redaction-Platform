@@ -43,6 +43,8 @@ def test_case_read_endpoints(tmp_path) -> None:
         body = response.json()
         assert body[0]["redactions"][0]["ending_position"] == 27
         assert body[1]["redactions"] == []
+        ai_redaction = next(item for item in body[0]["redactions"] if item["source"] == "AI")
+        assert client.delete(f"/redactions/{ai_redaction['id']}").status_code == 204
         assert client.get("/cases/999999").status_code == 404
     finally:
         app.dependency_overrides.clear()
