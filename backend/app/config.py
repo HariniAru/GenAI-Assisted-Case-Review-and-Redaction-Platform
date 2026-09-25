@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite:///./case_review.db"
+    database_url: str
     demo_reviewer_email: str = "jordan.lee@example.com"
     llm_provider: str = "huggingface"
     hf_token: str = ""
