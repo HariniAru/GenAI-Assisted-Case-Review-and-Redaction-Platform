@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -28,8 +28,12 @@ class User(Base):
     first_name: Mapped[str] = mapped_column(String, nullable=False)
     last_name: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, nullable=False, unique=True)
-    created_at: Mapped[datetime] = mapped_column(default=utc_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(default=utc_now, onupdate=utc_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
     redactions: Mapped[list["Redaction"]] = relationship(back_populates="user")
 
 
@@ -42,8 +46,12 @@ class Case(Base):
     case_number: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     status: Mapped[str] = mapped_column(String, nullable=False)
     ai_summary: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(default=utc_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(default=utc_now, onupdate=utc_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
     activities: Mapped[list["Activity"]] = relationship(back_populates="case")
 
 
@@ -55,7 +63,9 @@ class Activity(Base):
     activity_uid: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     activity_type: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=utc_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
     case: Mapped[Case] = relationship(back_populates="activities")
     redactions: Mapped[list["Redaction"]] = relationship(back_populates="activity")
 
@@ -64,9 +74,13 @@ class RedactionType(Base):
     __tablename__ = "redaction_types"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False, unique=True)
-    created_at: Mapped[datetime] = mapped_column(default=utc_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(default=utc_now, onupdate=utc_now, nullable=False)
-    deleted_at: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     redactions: Mapped[list["Redaction"]] = relationship(back_populates="redaction_type")
 
 
@@ -86,8 +100,12 @@ class Redaction(Base):
     source: Mapped[str] = mapped_column(String, nullable=False)
     redaction_text: Mapped[str] = mapped_column(String, nullable=False)
     starting_position: Mapped[int] = mapped_column(nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=utc_now, nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(default=utc_now, onupdate=utc_now, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utc_now, onupdate=utc_now, nullable=False
+    )
     activity: Mapped[Activity] = relationship(back_populates="redactions")
     redaction_type: Mapped[RedactionType] = relationship(back_populates="redactions")
     user: Mapped[User] = relationship(back_populates="redactions")

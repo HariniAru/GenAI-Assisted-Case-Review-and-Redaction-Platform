@@ -9,7 +9,7 @@ from app.database import Base
 
 config = context.config
 configured_url = config.get_main_option("sqlalchemy.url")
-if configured_url in (None, "sqlite:///./case_review.db"):
+if not configured_url:
     config.set_main_option("sqlalchemy.url", get_settings().database_url.replace("%", "%%"))
 if config.config_file_name:
     fileConfig(config.config_file_name)
@@ -27,6 +27,13 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    connection = config.attributes.get("connection")
+    if connection is not None:
+        context.configure(connection=connection, target_metadata=target_metadata)
+        with context.begin_transaction():
+            context.run_migrations()
+        return
+
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

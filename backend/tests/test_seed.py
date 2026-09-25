@@ -1,20 +1,11 @@
-from sqlalchemy import create_engine, event, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import Activity, Case, Redaction, RedactionType
 from app.seed import ACTIVITIES, seed
 
 
-def test_seed_is_deterministic_and_consistent(tmp_path) -> None:
-    engine = create_engine(f"sqlite:///{tmp_path / 'seed.db'}")
-
-    @event.listens_for(engine, "connect")
-    def enable_fk(dbapi_connection, _record):
-        dbapi_connection.execute("PRAGMA foreign_keys=ON")
-
-    from app.database import Base
-
-    Base.metadata.create_all(engine)
+def test_seed_is_deterministic_and_consistent(engine) -> None:
     with Session(engine) as session:
         first = seed(session)
         session.commit()

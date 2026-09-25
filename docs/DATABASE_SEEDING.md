@@ -1,5 +1,7 @@
 # Database Seeding
 
+> Historical SQLite milestone. For the PostgreSQL branch, use [the current setup](../README.md) and [migration notes](POSTGRES_MIGRATION.md). Existing application behavior is preserved.
+
 ## Goal
 
 Add deterministic synthetic data to the existing SQLite database so the models, relationships, constraints, and future review interface can be tested.

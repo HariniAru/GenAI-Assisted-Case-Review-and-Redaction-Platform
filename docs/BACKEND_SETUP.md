@@ -1,5 +1,7 @@
 # Backend Setup: Steps 1–3
 
+> Historical SQLite milestone. For the PostgreSQL branch, use [the current setup](../README.md) and [migration notes](POSTGRES_MIGRATION.md). Existing application behavior is preserved.
+
 ## Goal
 
 Create the project structure, configure a working Python/FastAPI backend, and implement the initial database migration.
