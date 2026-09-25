@@ -35,7 +35,7 @@ def engine(tmp_path):
         admin = create_engine(url)
         with admin.begin() as connection:
             connection.exec_driver_sql(f'CREATE SCHEMA "{schema}"')
-        engine = create_engine(url, connect_args={"options": f"-csearch_path={schema}"})
+        engine = create_engine(url, connect_args={"options": f"-csearch_path={schema},public"})
     else:
         engine = create_engine(
             f"sqlite:///{tmp_path / 'test.db'}", connect_args={"check_same_thread": False}

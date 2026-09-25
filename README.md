@@ -3,7 +3,9 @@
 Learning-focused case review and text-redaction platform using synthetic records,
 FastAPI, SQLAlchemy, and React. The `postgres-migration` branch uses PostgreSQL;
 `main` and the `sqlite-baseline` tag preserve the SQLite implementation.
-No RAG or pgvector is included in this migration.
+This branch now includes local reference retrieval with LangChain and pgvector.
+Retrieval is for inspection only; AI prompts and reviewer workflows are unchanged.
+See [retrieval setup and verification](docs/REFERENCE_RETRIEVAL.md).
 
 ## Local PostgreSQL setup
 
@@ -108,8 +110,8 @@ See [migration notes and verification results](docs/POSTGRES_MIGRATION.md).
 
 Run Git commands from the repository root. Stop API/frontend servers first,
 especially reload servers, so they do not reload midway through a branch switch.
-Commit or stash any new tracked edits before switching. The untracked
-`docs/rag_reference_corpus.md` remains local and accessible on either version.
+Commit or stash any new tracked edits before switching. The reference corpus is now tracked on `postgres-migration`; it is absent from
+the historical SQLite tag.
 
 Study the exact SQLite snapshot:
 
@@ -141,4 +143,5 @@ uv run --env-file .env.postgres uvicorn app.main:app --reload
 
 Start the frontend with `npm run dev` from `frontend/` on either version. Git
 switches code, not ignored `.env` files, the SQLite database, or Docker volumes.
-Neither branch nor tag has been pushed or merged by this migration.
+The SQLite baseline and PostgreSQL migration were pushed separately; they have
+not been merged. The retrieval milestone is a separate commit on the PostgreSQL branch.
