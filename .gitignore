@@ -12,3 +12,12 @@ venv/
 .ruff_cache/
 
 node_modules/
+dist/
+*.tsbuildinfo
+.env.*
+!.env.example
+*.sqlite
+*.sqlite3
+*.db-*
+*.sqlite-*
+*.sqlite3-*
