@@ -14,6 +14,7 @@ def test_schema_tables_and_constraints(engine) -> None:
         "redaction_types",
         "redactions",
         "alembic_version",
+        "reference_chunks",
     }
 
 

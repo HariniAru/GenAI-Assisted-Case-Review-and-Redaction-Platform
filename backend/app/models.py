@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, Text
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -109,3 +110,15 @@ class Redaction(Base):
     activity: Mapped[Activity] = relationship(back_populates="redactions")
     redaction_type: Mapped[RedactionType] = relationship(back_populates="redactions")
     user: Mapped[User] = relationship(back_populates="redactions")
+
+
+class ReferenceChunk(Base):
+    __tablename__ = "reference_chunks"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    chunk_metadata: Mapped[dict[str, str]] = mapped_column("metadata", JSON, nullable=False)
+    model_key: Mapped[str] = mapped_column(String, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(
+        Vector(384).with_variant(JSON(), "sqlite"), nullable=False
+    )
