@@ -5,12 +5,15 @@ from sqlalchemy.orm import Session, selectinload
 from app.config import get_settings
 from app.database import get_db
 from app.models import Activity, Redaction, RedactionType, User
+from app.redaction_validation import matches_span
 from app.schemas import RedactionCreate, RedactionResponse, RedactionTypeResponse, RedactionUpdate
 
 router = APIRouter(tags=["redactions"])
 
 
-def validate(db, activity, type_id, text, start):
+def validate(
+    db: Session, activity: Activity | None, type_id: int, text: str, start: int
+) -> RedactionType:
     if activity is None:
         raise HTTPException(404, "Activity not found")
     typ = db.get(RedactionType, type_id)
@@ -18,18 +21,17 @@ def validate(db, activity, type_id, text, start):
         raise HTTPException(422, "Redaction type is unavailable")
     if not text or not text.strip() or start < 0:
         raise HTTPException(422, "Invalid redaction text or position")
-    end = start + len(text)
-    if end > len(activity.description) or activity.description[start:end] != text:
+    if not matches_span(activity.description, text, start):
         raise HTTPException(422, "Redaction text does not match the activity description")
     return typ
 
 
-def ensure_case_open(activity):
+def ensure_case_open(activity: Activity) -> None:
     if activity.case.status == "CLOSED":
         raise HTTPException(409, "Closed cases cannot be changed")
 
 
-def loaded(db, rid):
+def loaded(db: Session, rid: int) -> Redaction | None:
     return db.scalar(
         select(Redaction)
         .where(Redaction.id == rid)

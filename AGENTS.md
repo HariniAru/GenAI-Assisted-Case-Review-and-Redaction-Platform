@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This is a learning-focused GenAI-assisted case review and text-redaction platform built with a Python/FastAPI backend and a React frontend. It uses synthetic customer-call records and will eventually incorporate RAG, LangGraph, Docker, AWS, and CloudWatch.
+This is a learning-focused GenAI-assisted case review and text-redaction platform built with a Python/FastAPI backend and a React frontend. It uses synthetic customer-call records with PostgreSQL/pgvector retrieval, LangGraph analysis, Docker-based PostgreSQL, and optional LangSmith tracing. SQLite supports core review workflows. The current application lives on `main`; database selection is configuration-based.
 
 AI output is advisory: reviewers verify recommendations before approved redactions or summaries are saved. Work incrementally so the architecture, code, and tradeoffs can be clearly explained in an interview.
 

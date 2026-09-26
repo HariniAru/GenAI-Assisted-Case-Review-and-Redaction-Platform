@@ -112,18 +112,11 @@ Tests disable external tracing and use mocked trace transport to check that all
 graph nodes are recorded when enabled. They also verify local `.env` settings,
 the disabled path, the Studio input schema, and existing approval behavior.
 
-Verified during setup: Ruff lint/format passed; PostgreSQL **41 tests passed**;
-SQLite **37 passed, 4 skipped**.
-The Studio health and registered graph schema
-endpoints returned 200. A fabricated connection trace containing no case data
-was uploaded to LangSmith and read back successfully using the configured key.
-After explicit user approval, case 2 completed through the local Studio server
-using PostgreSQL and the live Qwen provider: one summary draft and four validated
-redaction proposals across two activities. A before/after comparison confirmed
-all case and redaction rows were unchanged. The initial attempt exposed the env
-override issue described above; the corrected run succeeded. Browser interaction
-itself was not tested. LangSmith read-back confirmed the root graph, both branches,
-two retriever runs, and all three Qwen child runs completed without errors.
+A live setup check on synthetic case 2 confirmed both branches, two retrieval
+calls, and three Qwen calls in LangSmith. It returned drafts without changing any
+case/redaction rows. The check exposed and fixed Studio's env-file override issue
+explained above. Browser interaction was not automated. See README for current
+regression commands rather than treating historical test counts as current.
 
 Official references: [local development server](https://docs.langchain.com/langsmith/local-dev-testing),
 [tracing configuration](https://docs.langchain.com/langsmith/trace-without-env-vars),

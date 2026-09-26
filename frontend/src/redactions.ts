@@ -1,3 +1,45 @@
 import type { Redaction } from "./types";
-export interface Segment { text:string; redactions:Redaction[]; valid:boolean }
-export function segmentText(description:string, redactions:Redaction[]):Segment[]{ const chars=Array.from(description); const valid=redactions.filter(r=>r.starting_position>=0&&r.starting_position+r.redaction_text.length<=chars.length&&chars.slice(r.starting_position,r.starting_position+r.redaction_text.length).join("")===r.redaction_text); redactions.filter(r=>!valid.includes(r)).forEach(()=>console.warn("Ignoring invalid redaction range")); const points=new Set([0,chars.length]); valid.forEach(r=>{points.add(r.starting_position);points.add(r.starting_position+Array.from(r.redaction_text).length)}); const sorted=[...points].sort((a,b)=>a-b); return sorted.slice(0,-1).map((start,i)=>{const end=sorted[i+1]; return {text:chars.slice(start,end).join(""),redactions:valid.filter(r=>start<r.starting_position+Array.from(r.redaction_text).length&&end>r.starting_position),valid:true};}).filter(s=>s.text.length>0); }
+
+export interface Segment {
+  text: string;
+  redactions: Redaction[];
+}
+
+export function segmentText(
+  description: string,
+  redactions: Redaction[],
+): Segment[] {
+  const characters = Array.from(description);
+  const valid = redactions.flatMap((redaction) => {
+    const start = redaction.starting_position;
+    const end = start + Array.from(redaction.redaction_text).length;
+    if (
+      start < 0 ||
+      end > characters.length ||
+      characters.slice(start, end).join("") !== redaction.redaction_text
+    ) {
+      console.warn("Ignoring invalid redaction range");
+      return [];
+    }
+    return [{ redaction, start, end }];
+  });
+
+  const boundaries = new Set([0, characters.length]);
+  for (const { start, end } of valid) {
+    boundaries.add(start);
+    boundaries.add(end);
+  }
+  const sorted = [...boundaries].sort((a, b) => a - b);
+  return sorted
+    .slice(0, -1)
+    .map((start, index) => {
+      const end = sorted[index + 1];
+      return {
+        text: characters.slice(start, end).join(""),
+        redactions: valid
+          .filter((range) => start < range.end && end > range.start)
+          .map((range) => range.redaction),
+      };
+    })
+    .filter((segment) => segment.text.length > 0);
+}

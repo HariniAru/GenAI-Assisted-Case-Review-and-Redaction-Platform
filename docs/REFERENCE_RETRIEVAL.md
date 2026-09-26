@@ -1,8 +1,7 @@
 # Local reference retrieval
 
-The original retrieval milestone provided inspection only. The subsequent
-[grounded-recommendations milestone](GROUNDED_AI_SETUP.md) now reuses this index
-for AI suggestions; the inspection endpoint remains available. The corpus is still draft synthetic policy; retrieval does
+[Grounded recommendations](GROUNDED_AI_SETUP.md) and case analysis reuse this index;
+the inspection endpoint is also available. The corpus is still draft synthetic policy; retrieval does
 not turn proposed labels into approved decisions.
 
 ## Setup and data preservation
@@ -53,9 +52,8 @@ The configuration pins:
 
 `langchain-core` supplies Documents, Embeddings, and the BaseRetriever interface;
 `sentence-transformers` runs the local model; `pgvector` supplies SQLAlchemy's
-vector column and cosine-distance expression. No full LangChain framework,
-LangGraph, hosted embedding integration, or extra vector-store table manager is
-needed. `uv.lock` pins the resolved dependency tree. LangChain's transitive
+vector column and cosine-distance expression. Retrieval needs no hosted embedding integration or extra vector-store table manager.
+LangGraph coordinates the separate case-analysis workflow. `uv.lock` pins the resolved dependency tree. LangChain's transitive
 LangSmith tracing is explicitly disabled in this endpoint.
 
 Model identity, revision, dimensions, and the averaging algorithm form the index
@@ -123,75 +121,16 @@ Unknown activity: 404. Missing migration, empty/incomplete mandatory policy,
 incompatible embedding model, or unavailable index: 503 with guidance. No new
 frontend route is added; inspect through curl, FastAPI `/docs`, or DBeaver.
 
-## Checks
+## Verification and limitations
 
-From `backend/`:
+See [README verification](../README.md#verification) for both database modes.
+Tests use deterministic fake vectors in isolated PostgreSQL schemas and exercise
+migration preservation, repeat/update/remove ingestion, rollback, required policy,
+metadata, missing records, and incompatible model errors. SQLite uses a JSON
+storage variant for portable schema/tests; live retrieval requires PostgreSQL.
 
-```bash
-uv run ruff format --check .
-uv run ruff check .
-uv run --env-file .env.postgres pytest
-uv run --env-file .env.postgres alembic check
-uv run pytest
-```
-
-PostgreSQL tests use the existing dedicated `_test` database and per-test schemas;
-`public` is in their search path solely to resolve the shared vector extension.
-Tests never seed or mutate the development review records. SQLite regression
-tests use a JSON storage variant to exercise old application behavior; semantic
-retrieval itself requires PostgreSQL. The `sqlite-baseline` tag remains unchanged.
-Tests use deterministic fake vectors for fast, offline integration checks;
-actual-model sanity checks are documented below and are not an accuracy score.
-
-## Actual verification results
-
-Commands run from `backend/` (with `UV_CACHE_DIR=/tmp/case-review-uv-cache` as a
-sandbox cache-location override):
-
-```bash
-uv sync --extra dev
-uv run ruff format .
-uv run ruff check .
-uv run --env-file .env.postgres alembic upgrade head
-uv run --env-file .env.postgres pytest -q
-uv run pytest -q
-uv run --env-file .env.postgres python -m app.ingest_references
-HF_HUB_OFFLINE=1 uv run --env-file .env.postgres python -m app.ingest_references
-HF_HUB_OFFLINE=1 uv run --env-file .env.postgres python -m app.inspect_references
-uv run --env-file .env.postgres alembic check
-```
-
-The container was pulled and started using the root Compose commands above.
-Initial ingestion: `chunks=32 updated=32 removed=0`. Offline repeat:
-`chunks=32 updated=0 removed=0`. Real-model HTTP endpoint checks used FastAPI's
-TestClient against the existing development activities and confirmed 200s and
-an unknown-activity 404, without writes. All five original case tables had
-identical row counts and ordered-row hashes before and after the milestone.
-
-| Activity queried | Ranked example activity UIDs (closest first) |
-| --- | --- |
-| ACT-1001-01 | ACT-1001-01, ACT-1004-01, ACT-1004-02 |
-| ACT-1002-02 | ACT-1002-02, ACT-1004-02, ACT-1004-01 |
-| ACT-1004-01 | ACT-1004-01, ACT-1002-02, ACT-1004-02 |
-| ACT-1005-01 | ACT-1005-01, ACT-1002-01, ACT-1001-01 |
-| ACT-1001-02 (negative) | ACT-1001-02, ACT-1004-02, ACT-1004-01 |
-
-Each response included all six `1.*` policy sections, plus exact glossary
-matches. For ACT-1005-01, the first example contains the explicit `No legal
-advice discussed` negative for PRIVILEGED; the always-included PRIVILEGED policy
-also states that exception. ACT-1001-02's first example explicitly suggests no
-redactions. Lower-ranked neighbors can contain unrelated positive examples:
-retrieval alone must never be treated as a redaction decision.
-
-Results: PostgreSQL **12 passed**; SQLite **9 passed, 3 intentionally skipped**
-(pgvector-only integration tests). Ruff format/lint passed; Alembic detected no
-model/schema drift. The real embedding library emits a non-blocking rename
-warning for `get_sentence_embedding_dimension`; dimensions are verified as 384.
-Frontend checks were not run because no frontend files or behavior changed.
-No held-out evaluation, generation changes, or browser UI were part of this
-milestone. Retrieval relevance remains limited by this small English model,
-window averaging, and the deliberately tiny synthetic corpus.
-
-References: [pgvector supported images](https://github.com/pgvector/pgvector#docker),
-[MiniLM model card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2),
-[LangChain embedding interface](https://docs.langchain.com/oss/python/integrations/embeddings).
+`python -m app.inspect_references` is a read-only real-embedding diagnostic for
+seeded activities. Use `uv run --env-file .env.postgres python -m app.inspect_references`
+from `backend/`. These are corpus sanity checks, not a held-out accuracy score:
+the synthetic activity examples are already in the corpus. Relevance is limited
+by the small English model, window averaging, and tiny synthetic corpus.

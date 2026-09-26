@@ -4,7 +4,7 @@ Optional [Studio and LangSmith tracing](LANGGRAPH_STUDIO.md) is now available.
 Studio adds development-server run storage; the application workflow below still
 uses a request-scoped graph with no persisted approval state.
 
-On `postgres-migration`, **Analyze case** produces unsaved redaction proposals
+On `main` with PostgreSQL, **Analyze case** produces unsaved redaction proposals
 and an editable summary. The existing Hugging Face/Qwen provider is unchanged.
 Opening a case or its list only reads saved data. Previously saved summaries
 remain visible until a reviewer explicitly approves a replacement.
@@ -85,7 +85,7 @@ does not generate or save anything.
 In React, edit then **Approve summary**, or **Discard summary draft**. Redaction
 **Accept/Reject** controls remain independent. Approving or discarding the summary
 leaves pending redactions intact, and accepting a redaction leaves the summary
-draft intact. Manual redactions and saved redaction editing still work. Drafts
+draft intact. Manual create/delete in the UI and manual updates via the API still work. Drafts
 live only in browser memory and are lost on navigation, refresh, or reanalysis.
 
 ## Run and verify
@@ -106,30 +106,12 @@ Start `npm run dev` in `frontend/`, open an active seeded case, select **Analyze
 case**, and verify both draft types. Review a summary separately from each
 redaction. Existing development data need not be reseeded.
 
-Checks run for this milestone:
+For the current backend/frontend checks and database-mode limits, see
+[README verification](../README.md#verification). Tests cover snapshot consistency,
+parallel branches, session ownership, no generation writes, failure handling,
+independent approvals, and conflicting summary changes. Tests use fake models.
 
-```bash
-# backend/
-uv run ruff check .
-uv run ruff format --check .
-uv run --env-file .env.postgres pytest -q
-env -u TEST_DATABASE_URL uv run pytest -q
-# frontend/
-npm run lint
-npm test -- --run
-npm run build
-```
-
-Results: PostgreSQL **36 passed** in isolated test schemas; SQLite **32 passed,
-4 skipped** (PostgreSQL-specific checks); Ruff lint/format passed; frontend lint,
-**11 tests**, and TypeScript/Vite production build passed. Fake models/retrievers
-test concurrency, snapshot consistency, join behavior, invalid spans, grouping,
-session ownership, zero generation writes, failure paths, empty/closed cases,
-explicit approval, conflicts, and independent UI decisions.
-
-Manual seeded-case browser verification could not run because Computer Use
-permissions were not granted. Live Qwen output quality and external provider
-availability were not tested; automated tests make no paid model calls. The
-development database was not reset or reseeded. Model instructions and structural
-validation cannot prove factual accuracy or detect every sensitive disclosure;
-review remains mandatory. Authentication is still outside this milestone.
+The live Studio verification is documented in [Studio setup](LANGGRAPH_STUDIO.md).
+Model instructions and structural validation cannot prove factual accuracy or
+detect every sensitive disclosure; review remains mandatory. Authentication is
+outside the current learning application.

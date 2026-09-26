@@ -1,11 +1,13 @@
 """Shared generation helpers; neither endpoint nor graph validation saves drafts."""
 
+from collections.abc import Collection
 from typing import Protocol
 
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 
 from app.ai_grounding import MAX_DESCRIPTION_CHARS, GroundingContext, build_grounding
+from app.redaction_validation import matches_span
 from app.schemas import AIRecommendation, GroundedAIRecommendation
 
 
@@ -23,15 +25,9 @@ def retrieve_grounding(
     return documents, build_grounding(documents, activity.activity_uid)
 
 
-def valid(activity, types, recommendation) -> bool:
-    start = recommendation.starting_position
-    text = recommendation.redaction_text
-    return bool(
-        recommendation.redaction_type in types
-        and text.strip()
-        and start >= 0
-        and start + len(text) <= len(activity.description)
-        and activity.description[start : start + len(text)] == text
+def valid(activity: ActivityText, types: Collection[str], recommendation: AIRecommendation) -> bool:
+    return recommendation.redaction_type in types and matches_span(
+        activity.description, recommendation.redaction_text, recommendation.starting_position
     )
 
 
