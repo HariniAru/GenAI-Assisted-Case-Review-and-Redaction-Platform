@@ -54,3 +54,49 @@ def engine(tmp_path):
             with admin.begin() as connection:
                 connection.exec_driver_sql(f'DROP SCHEMA "{schema}" CASCADE')
             admin.dispose()
+
+
+@pytest.fixture
+def grounded_retriever(engine):
+    """Index corpus policy rows locally, but fake retrieval for generation tests."""
+    from sqlalchemy.orm import Session
+
+    from app.ai_router import recommendation_retriever
+    from app.main import app
+    from app.models import ReferenceChunk
+    from app.reference_corpus import CORPUS_PATH, SOURCE, parse_corpus
+    from app.reference_embeddings import model_key
+
+    documents = parse_corpus(CORPUS_PATH.read_text())
+    with Session(engine) as db:
+        for doc in documents:
+            db.add(
+                ReferenceChunk(
+                    id=doc.id,
+                    source=SOURCE,
+                    content=doc.page_content,
+                    chunk_metadata=doc.metadata,
+                    model_key=model_key(),
+                    embedding=[1.0] * 384,
+                )
+            )
+        db.commit()
+
+    class FakeRetriever:
+        def __init__(self):
+            self.documents = documents
+            self.queries = []
+            self.error = None
+
+        def invoke(self, description):
+            self.queries.append(description)
+            if self.error:
+                raise self.error
+            return self.documents
+
+    retriever = FakeRetriever()
+    app.dependency_overrides[recommendation_retriever] = lambda: retriever
+    try:
+        yield retriever
+    finally:
+        app.dependency_overrides.pop(recommendation_retriever, None)

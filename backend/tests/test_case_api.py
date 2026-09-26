@@ -42,12 +42,12 @@ def test_case_read_endpoints(engine) -> None:
         app.dependency_overrides.clear()
 
 
-def test_review_workflows(engine, monkeypatch) -> None:
+def test_review_workflows(engine, monkeypatch, grounded_retriever) -> None:
     from app import ai_router
     from app.schemas import AIRecommendation, AIRecommendationResponse, AISummaryResponse
 
     class FakeProvider:
-        def recommend(self, text, types):
+        def recommend(self, text, types, context):
             return AIRecommendationResponse(
                 recommendations=[
                     AIRecommendation(

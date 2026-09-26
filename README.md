@@ -4,8 +4,10 @@ Learning-focused case review and text-redaction platform using synthetic records
 FastAPI, SQLAlchemy, and React. The `postgres-migration` branch uses PostgreSQL;
 `main` and the `sqlite-baseline` tag preserve the SQLite implementation.
 This branch now includes local reference retrieval with LangChain and pgvector.
-Retrieval is for inspection only; AI prompts and reviewer workflows are unchanged.
-See [retrieval setup and verification](docs/REFERENCE_RETRIEVAL.md).
+AI recommendations now use retrieved policy and examples, with a supporting rule
+shown for each proposal. Reviewers still explicitly accept or reject suggestions.
+See [retrieval setup](docs/REFERENCE_RETRIEVAL.md) and
+[grounded recommendation setup and API notes](docs/GROUNDED_AI_SETUP.md).
 
 ## Local PostgreSQL setup
 
