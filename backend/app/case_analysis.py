@@ -37,6 +37,10 @@ class ActivitySnapshot:
     saved_spans: tuple[tuple[str, int], ...]
 
 
+class AnalysisInput(TypedDict):
+    case_id: int
+
+
 class AnalysisState(TypedDict, total=False):
     case_id: int
     activities: tuple[ActivitySnapshot, ...]
@@ -208,7 +212,7 @@ def build_analysis_graph(
             )
         }
 
-    graph = StateGraph(AnalysisState)
+    graph = StateGraph(AnalysisState, input_schema=AnalysisInput)
     for name, node in (
         ("load_case", load_case),
         ("retrieve_rules", retrieve_rules),

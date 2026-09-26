@@ -4,7 +4,6 @@ from typing import Protocol
 
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
-from langsmith import tracing_context
 
 from app.ai_grounding import MAX_DESCRIPTION_CHARS, GroundingContext, build_grounding
 from app.schemas import AIRecommendation, GroundedAIRecommendation
@@ -20,8 +19,7 @@ def retrieve_grounding(
 ) -> tuple[list[Document], GroundingContext]:
     if len(activity.description) > MAX_DESCRIPTION_CHARS:
         raise ValueError("Activity exceeds the AI recommendation input limit")
-    with tracing_context(enabled=False):
-        documents = retriever.invoke(activity.description)
+    documents = retriever.invoke(activity.description)
     return documents, build_grounding(documents, activity.activity_uid)
 
 

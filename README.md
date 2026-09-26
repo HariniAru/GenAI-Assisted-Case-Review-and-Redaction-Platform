@@ -12,6 +12,8 @@ Opening a case or the case list never generates or saves a summary.
 See [retrieval setup](docs/REFERENCE_RETRIEVAL.md) and
 [grounded recommendation setup and API notes](docs/GROUNDED_AI_SETUP.md), plus
 [case analysis workflow, API, and verification](docs/CASE_ANALYSIS.md).
+For graph visualization and optional hosted traces, see
+[Studio and LangSmith setup](docs/LANGGRAPH_STUDIO.md).
 
 ## Local PostgreSQL setup
 
@@ -151,3 +153,10 @@ Start the frontend with `npm run dev` from `frontend/` on either version. Git
 switches code, not ignored `.env` files, the SQLite database, or Docker volumes.
 The SQLite baseline and PostgreSQL migration were pushed separately; they have
 not been merged. The retrieval milestone is a separate commit on the PostgreSQL branch.
+
+
+FastAPI:
+uv run --extra studio --env-file .env.postgres uvicorn app.main:app --reload
+
+Studio:
+uv run --extra studio --env-file .env --env-file .env.postgres langgraph dev --host 127.0.0.1

@@ -120,6 +120,40 @@ def stored_rows(sessions):
         )
 
 
+def test_enabled_tracing_captures_parallel_nodes_without_network(analysis_setup, monkeypatch):
+    from langsmith import Client
+
+    from app import observability
+    from app.config import Settings
+
+    captured = []
+    client = Client(api_key="synthetic-test-key", auto_batch_tracing=False)
+    monkeypatch.setattr(Client, "create_run", lambda self, **kwargs: captured.append(kwargs))
+    monkeypatch.setattr(Client, "update_run", lambda *args, **kwargs: None)
+    monkeypatch.setattr(observability, "tracing_client", lambda: client)
+    monkeypatch.setattr(
+        observability,
+        "get_settings",
+        lambda: Settings(_env_file=None, langsmith_tracing=True, langsmith_project="test"),
+    )
+    response = analysis_setup.client.post("/cases/2/analyze")
+    assert response.status_code == 200
+    from langchain_core.tracers.langchain import wait_for_all_tracers
+
+    wait_for_all_tracers()
+    names = {run["name"] for run in captured}
+    assert {
+        "case_analysis",
+        "load_case",
+        "retrieve_rules",
+        "recommend",
+        "validate",
+        "load_summary_guidance",
+        "draft_summary",
+        "return_drafts",
+    } <= names
+
+
 def test_parallel_branches_share_snapshot_and_join_without_writes(analysis_setup):
     setup = analysis_setup
     before = stored_rows(setup.sessions)

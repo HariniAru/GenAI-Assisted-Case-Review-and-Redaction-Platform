@@ -1,6 +1,7 @@
 from typing import Protocol
 
 from huggingface_hub import InferenceClient
+from langsmith import traceable
 
 from app.config import get_settings
 from app.schemas import AIRecommendationResponse, AISummaryResponse
@@ -14,6 +15,7 @@ class RecommendationProvider(Protocol):
 
 
 class HuggingFaceRecommendationProvider:
+    @traceable(name="Qwen summary", run_type="llm")
     def summarize(self, text: str, guidance: str) -> AISummaryResponse:
         settings = get_settings()
         if not settings.hf_token:
@@ -55,6 +57,7 @@ class HuggingFaceRecommendationProvider:
             raise RuntimeError("Hugging Face returned no summary")
         return AISummaryResponse.model_validate_json(content)
 
+    @traceable(name="Qwen redactions", run_type="llm")
     def recommend(
         self, description: str, types: list[str], context: str
     ) -> AIRecommendationResponse:

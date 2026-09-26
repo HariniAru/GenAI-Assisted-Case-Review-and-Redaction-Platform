@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
 from langgraph.graph.state import CompiledStateGraph
-from langsmith import tracing_context
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -10,6 +9,7 @@ from app.case_analysis import AnalysisFailure, build_analysis_graph
 from app.config import get_settings
 from app.database import SessionLocal, get_db
 from app.models import Case
+from app.observability import analysis_tracing
 from app.reference_router import embedding_provider
 from app.reference_service import ReferenceRetriever
 from app.schemas import CaseAnalysisDraft, CaseResponse, SummaryApproval
@@ -32,8 +32,10 @@ def analysis_graph() -> CompiledStateGraph:
 @router.post("/{case_id}/analyze", response_model=CaseAnalysisDraft)
 def analyze(case_id: int, graph: CompiledStateGraph = Depends(analysis_graph)):  # noqa: B008
     try:
-        with tracing_context(enabled=False):
-            state = graph.invoke({"case_id": case_id}, config={"max_concurrency": 2})
+        with analysis_tracing():
+            state = graph.invoke(
+                {"case_id": case_id}, config={"max_concurrency": 2, "run_name": "case_analysis"}
+            )
         return state["result"]
     except AnalysisFailure as exc:
         raise HTTPException(exc.status, exc.detail) from None

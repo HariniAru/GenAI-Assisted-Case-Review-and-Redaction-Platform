@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     hf_token: str = ""
     hf_model: str = "Qwen/Qwen3-32B"
     hf_provider: str = "nscale"
+    langsmith_tracing: bool = False
+    langsmith_api_key: SecretStr = SecretStr("")
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
+    langsmith_project: str = "case-review"
+    langsmith_workspace_id: str | None = None
 
     embedding_model: Literal["sentence-transformers/all-MiniLM-L6-v2"] = (
         "sentence-transformers/all-MiniLM-L6-v2"

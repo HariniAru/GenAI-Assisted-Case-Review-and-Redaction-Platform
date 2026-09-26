@@ -1,5 +1,9 @@
 # Case analysis drafts
 
+Optional [Studio and LangSmith tracing](LANGGRAPH_STUDIO.md) is now available.
+Studio adds development-server run storage; the application workflow below still
+uses a request-scoped graph with no persisted approval state.
+
 On `postgres-migration`, **Analyze case** produces unsaved redaction proposals
 and an editable summary. The existing Hugging Face/Qwen provider is unchanged.
 Opening a case or its list only reads saved data. Previously saved summaries

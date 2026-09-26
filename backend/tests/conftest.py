@@ -12,6 +12,10 @@ from sqlalchemy.engine import make_url
 # Never construct the application engine from a developer's .env during tests.
 os.environ["DATABASE_URL"] = "sqlite://"
 os.environ["DEMO_REVIEWER_EMAIL"] = "jordan.lee@example.com"
+# Tests must never send fixture text or consume a developer's tracing credentials.
+os.environ["LANGSMITH_TRACING"] = "false"
+os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGSMITH_API_KEY"] = ""
 
 
 def migrate(engine, revision: str = "head", *, downgrade: bool = False) -> None:

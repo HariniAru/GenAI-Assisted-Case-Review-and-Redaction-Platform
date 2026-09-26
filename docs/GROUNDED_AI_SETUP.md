@@ -34,8 +34,9 @@ frontend with `npm run dev` from `frontend/` and open a case.
 `POST /activities/{activity_id}/ai-recommendations`:
 
 1. Reject an unknown activity (404) or closed case (409).
-2. Query the existing retriever with the current database description. Disable
-   LangSmith tracing as with the inspection endpoint.
+2. Query the existing retriever with the current database description. Retrieval
+   now inherits the caller's tracing context, including case analysis when
+   enabled; inspection endpoints still disable tracing.
 3. Include all six mandatory policy sections, matched glossary entries, and up
    to three returned examples. Remove any example whose `activity_uid` equals
    the current activity. The inspection endpoint itself remains unchanged.
