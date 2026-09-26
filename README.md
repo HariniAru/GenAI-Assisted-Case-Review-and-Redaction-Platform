@@ -6,8 +6,12 @@ FastAPI, SQLAlchemy, and React. The `postgres-migration` branch uses PostgreSQL;
 This branch now includes local reference retrieval with LangChain and pgvector.
 AI recommendations now use retrieved policy and examples, with a supporting rule
 shown for each proposal. Reviewers still explicitly accept or reject suggestions.
+**Analyze case** runs independent LangGraph branches for redaction proposals
+and a summary draft. Neither is saved until its separate reviewer approval.
+Opening a case or the case list never generates or saves a summary.
 See [retrieval setup](docs/REFERENCE_RETRIEVAL.md) and
-[grounded recommendation setup and API notes](docs/GROUNDED_AI_SETUP.md).
+[grounded recommendation setup and API notes](docs/GROUNDED_AI_SETUP.md), plus
+[case analysis workflow, API, and verification](docs/CASE_ANALYSIS.md).
 
 ## Local PostgreSQL setup
 

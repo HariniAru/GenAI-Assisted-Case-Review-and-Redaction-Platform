@@ -88,7 +88,8 @@ class AIRecommendationResponse(BaseModel):
 
 
 class AISummaryResponse(BaseModel):
-    summary: str
+    model_config = ConfigDict(extra="forbid")
+    summary: str = Field(min_length=1, max_length=4000)
 
 
 class PolicyReference(BaseModel):
@@ -105,3 +106,20 @@ class GroundedAIRecommendation(AIRecommendation):
 
 class GroundedAIRecommendationResponse(BaseModel):
     recommendations: list[GroundedAIRecommendation]
+
+
+class ActivityAnalysisDraft(BaseModel):
+    activity_id: int
+    recommendations: list[GroundedAIRecommendation]
+
+
+class CaseAnalysisDraft(BaseModel):
+    case_id: int
+    activities: list[ActivityAnalysisDraft]
+    summary_draft: str | None
+
+
+class SummaryApproval(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    summary: str = Field(min_length=1, max_length=4000)
+    expected_summary: str | None

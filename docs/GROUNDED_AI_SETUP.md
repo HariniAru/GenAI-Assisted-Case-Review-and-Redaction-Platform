@@ -1,5 +1,10 @@
 # Grounded AI recommendation setup and API
 
+These notes describe the preceding grounding milestone. The subsequent
+[case analysis milestone](CASE_ANALYSIS.md) adds LangGraph and replaces automatic
+summary generation with independently approved drafts; its summary API notes
+supersede the historical behavior described here.
+
 `Generate AI recommendations` now retrieves rules before calling the existing
 Hugging Face/Qwen provider. It reuses `ReferenceRetriever` and the existing
 `reference_chunks` table; there is no second index, new migration, new dependency,

@@ -1,20 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException
 from langchain_core.embeddings import Embeddings
 from langchain_core.retrievers import BaseRetriever
-from langsmith import tracing_context
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
-from app.ai_grounding import LABELS, MAX_DESCRIPTION_CHARS, build_grounding, current_policy
+from app.ai_grounding import LABELS, MAX_DESCRIPTION_CHARS, current_policy
 from app.ai_service import HuggingFaceRecommendationProvider, RecommendationProvider
 from app.config import get_settings
 from app.database import get_db
 from app.models import Activity, Redaction, RedactionType, User
+from app.recommendation_service import retrieve_grounding, valid, validate_suggestions
 from app.reference_router import embedding_provider
 from app.reference_service import IndexUnavailable, ReferenceRetriever
 from app.schemas import (
-    AISummaryResponse,
     GroundedAIRecommendation,
     GroundedAIRecommendationResponse,
     RedactionResponse,
@@ -24,49 +23,9 @@ router = APIRouter(tags=["ai-recommendations"])
 provider: RecommendationProvider = HuggingFaceRecommendationProvider()
 
 
-@router.post("/cases/{case_id}/ai-summary", response_model=AISummaryResponse)
-def summary(case_id: int, db: Session = Depends(get_db)):  # noqa: B008
-    from app.models import Case
-
-    case = db.get(Case, case_id)
-    if not case:
-        raise HTTPException(404, "Case not found")
-    if case.ai_summary:
-        return AISummaryResponse(summary=case.ai_summary)
-    activities = db.scalars(
-        select(Activity).where(Activity.case_id == case_id).order_by(Activity.id)
-    ).all()
-    try:
-        result = provider.summarize("\n".join(a.description for a in activities))
-    except Exception as exc:
-        raise HTTPException(502, "AI summary service is unavailable") from exc
-    case.ai_summary = result.summary
-    db.commit()
-    return result
-
-
-def valid(activity, types, recommendation):
-    typ = types.get(recommendation.redaction_type)
-    start = recommendation.starting_position
-    text = recommendation.redaction_text
-    return (
-        typ
-        and text.strip()
-        and start >= 0
-        and start + len(text) <= len(activity.description)
-        and activity.description[start : start + len(text)] == text
-    )
-
-
-def normalize_position(activity, recommendation):
-    """Correct a model offset only when the exact text has one unambiguous match."""
-    text = recommendation.redaction_text
-    starts = [
-        i for i in range(len(activity.description)) if activity.description.startswith(text, i)
-    ]
-    if len(starts) == 1 and starts[0] != recommendation.starting_position:
-        return recommendation.model_copy(update={"starting_position": starts[0]})
-    return recommendation
+@router.post("/cases/{case_id}/ai-summary", deprecated=True)
+def summary(case_id: int):
+    raise HTTPException(410, "Use Analyze case for drafts, then explicitly approve the summary")
 
 
 def recommendation_retriever(
@@ -98,9 +57,7 @@ def recommend(
     if len(activity.description) > MAX_DESCRIPTION_CHARS:
         raise HTTPException(422, "Activity exceeds the AI recommendation input limit")
     try:
-        with tracing_context(enabled=False):
-            documents = retriever.invoke(activity.description)
-        grounding = build_grounding(documents, activity.activity_uid)
+        _, grounding = retrieve_grounding(activity, retriever)
     except (IndexUnavailable, SQLAlchemyError, OSError, ValueError, RuntimeError):
         raise HTTPException(
             503,
@@ -113,31 +70,18 @@ def recommend(
         )
     except Exception as exc:
         raise HTTPException(502, "AI recommendation service is unavailable") from exc
-    seen = set()
-    output = []
-    for rec in result.recommendations:
-        rec = normalize_position(activity, rec)
-        key = (rec.redaction_type, rec.redaction_text, rec.starting_position)
-        duplicate = db.scalar(
-            select(Redaction).where(
-                Redaction.activity_id == activity_id,
-                Redaction.redaction_text == rec.redaction_text,
-                Redaction.starting_position == rec.starting_position,
+    saved_spans = set(
+        db.execute(
+            select(Redaction.redaction_text, Redaction.starting_position).where(
+                Redaction.activity_id == activity_id
             )
         )
-        if (
-            key not in seen
-            and rec.redaction_type in grounding.policies
-            and valid(activity, types, rec)
-            and not duplicate
-        ):
-            seen.add(key)
-            output.append(
-                GroundedAIRecommendation(
-                    **rec.model_dump(), supporting_policy=grounding.policies[rec.redaction_type]
-                )
-            )
-    return GroundedAIRecommendationResponse(recommendations=output)
+    )
+    return GroundedAIRecommendationResponse(
+        recommendations=validate_suggestions(
+            activity, list(types), result.recommendations, grounding, saved_spans
+        )
+    )
 
 
 @router.post(
