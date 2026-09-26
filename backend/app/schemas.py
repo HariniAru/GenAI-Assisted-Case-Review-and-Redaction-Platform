@@ -73,6 +73,8 @@ class RedactionUpdate(BaseModel):
 
 
 class AIRecommendation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     redaction_type: str = Field(description="One of the available redaction type names")
     redaction_text: str = Field(description="Exact contiguous substring copied from the source")
     starting_position: int = Field(description="Zero-based Unicode code-point index")
@@ -80,8 +82,44 @@ class AIRecommendation(BaseModel):
 
 
 class AIRecommendationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     recommendations: list[AIRecommendation]
 
 
 class AISummaryResponse(BaseModel):
-    summary: str
+    model_config = ConfigDict(extra="forbid")
+    summary: str = Field(min_length=1, max_length=4000)
+
+
+class PolicyReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    chunk_id: str
+    content_sha256: str
+    section: str
+    excerpt: str
+
+
+class GroundedAIRecommendation(AIRecommendation):
+    supporting_policy: PolicyReference
+
+
+class GroundedAIRecommendationResponse(BaseModel):
+    recommendations: list[GroundedAIRecommendation]
+
+
+class ActivityAnalysisDraft(BaseModel):
+    activity_id: int
+    recommendations: list[GroundedAIRecommendation]
+
+
+class CaseAnalysisDraft(BaseModel):
+    case_id: int
+    activities: list[ActivityAnalysisDraft]
+    summary_draft: str | None
+
+
+class SummaryApproval(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    summary: str = Field(min_length=1, max_length=4000)
+    expected_summary: str | None

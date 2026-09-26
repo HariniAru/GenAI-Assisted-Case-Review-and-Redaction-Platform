@@ -1,8 +1,8 @@
 # Local reference retrieval
 
-This milestone retrieves and displays fictional reference material only. It does
-not change AI prompts, recommendations, summary generation, reviewer actions,
-or the frontend. The corpus is still draft synthetic policy; retrieval does
+The original retrieval milestone provided inspection only. The subsequent
+[grounded-recommendations milestone](GROUNDED_AI_SETUP.md) now reuses this index
+for AI suggestions; the inspection endpoint remains available. The corpus is still draft synthetic policy; retrieval does
 not turn proposed labels into approved decisions.
 
 ## Setup and data preservation

@@ -21,3 +21,4 @@ dist/
 *.db-*
 *.sqlite-*
 *.sqlite3-*
+.langgraph_api/

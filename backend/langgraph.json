@@ -1,0 +1,5 @@
+{
+  "dependencies": ["."],
+  "graphs": {"case_analysis": "./app/studio.py:graph"},
+  "env": ".env.postgres"
+}

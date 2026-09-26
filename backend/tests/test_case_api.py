@@ -42,12 +42,12 @@ def test_case_read_endpoints(engine) -> None:
         app.dependency_overrides.clear()
 
 
-def test_review_workflows(engine, monkeypatch) -> None:
+def test_review_workflows(engine, monkeypatch, grounded_retriever) -> None:
     from app import ai_router
     from app.schemas import AIRecommendation, AIRecommendationResponse, AISummaryResponse
 
     class FakeProvider:
-        def recommend(self, text, types):
+        def recommend(self, text, types, context):
             return AIRecommendationResponse(
                 recommendations=[
                     AIRecommendation(
@@ -59,7 +59,7 @@ def test_review_workflows(engine, monkeypatch) -> None:
                 ]
             )
 
-        def summarize(self, text):
+        def summarize(self, text, guidance):
             return AISummaryResponse(summary="Synthetic case summary.")
 
     monkeypatch.setattr(ai_router, "provider", FakeProvider())
@@ -118,10 +118,8 @@ def test_review_workflows(engine, monkeypatch) -> None:
             assert client.post(f"/cases/{case_id}/close").json()["status"] == "CLOSED"
             assert client.post(path, json=payload).status_code == 409
             assert client.post(f"/cases/{case_id}/reopen").json()["status"] == "IN_PROGRESS"
-            assert (
-                client.post(f"/cases/{case_id}/ai-summary").json()["summary"]
-                == "Synthetic case summary."
-            )
-            assert client.get(f"/cases/{case_id}").json()["ai_summary"] == "Synthetic case summary."
+            assert client.post(f"/cases/{case_id}/ai-summary").status_code == 410
+            assert client.get(f"/cases/{case_id}").json()["ai_summary"] is None
+
     finally:
         app.dependency_overrides.clear()

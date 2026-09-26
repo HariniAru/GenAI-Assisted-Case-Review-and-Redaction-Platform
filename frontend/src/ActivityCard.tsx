@@ -1,20 +1,51 @@
 import { useRef, useState } from "react";
-import type { Activity, Redaction, RedactionType } from "./types";
+import type { Activity, AIRecommendation, Redaction, RedactionType } from "./types";
 import { api, ApiError } from "./api";
 import { segmentText } from "./redactions";
 import { styleFor } from "./redactionConfig";
 import { selectedRange } from "./selection";
 
-export function ActivityCard({ activity, types, onChanged, readOnly = false }: { activity: Activity; types: RedactionType[]; onChanged: () => void; readOnly?: boolean }) {
+export function ActivityCard({ activity, types, onChanged, readOnly = false, draftRecommendations, onDraftsChanged }: { activity: Activity; types: RedactionType[]; onChanged: () => void; readOnly?: boolean; draftRecommendations?: AIRecommendation[]; onDraftsChanged?: (drafts: AIRecommendation[]) => void }) {
   const ref = useRef<HTMLParagraphElement>(null);
   const [form, setForm] = useState<{ redaction?: Redaction; text: string; start: number } | null>(null);
   const [type, setType] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(""); const [recommendations,setRecommendations]=useState<import("./types").AIRecommendation[]>([]); const [generating,setGenerating]=useState(false);
+  const [error, setError] = useState(""); const [localRecommendations,setLocalRecommendations]=useState<AIRecommendation[]>([]);
+  const recommendations = draftRecommendations ?? localRecommendations;
+  const setRecommendations = (update: AIRecommendation[] | ((current: AIRecommendation[]) => AIRecommendation[])) => {
+    const next = typeof update === "function" ? update(recommendations) : update;
+    if (draftRecommendations !== undefined && onDraftsChanged) onDraftsChanged(next);
+    else setLocalRecommendations(next);
+  }; const [generating,setGenerating]=useState(false);
   const choose = () => { const selection = ref.current && selectedRange(ref.current); if (selection) setForm((current) => ({ redaction: current?.redaction, text: selection.text, start: selection.starting_position })); };
-  const generate=async()=>{setGenerating(true);setError("");try{setRecommendations((await api.aiRecommendations(activity.id)).recommendations)}catch{setError("Unable to generate AI recommendations.")}finally{setGenerating(false)}}; const accept=async(r:import("./types").AIRecommendation)=>{setBusy(true);try{await api.acceptRecommendation(activity.id,r);setRecommendations(x=>x.filter(y=>y!==r));onChanged()}catch{setError("Unable to accept recommendation.")}finally{setBusy(false)}}; const save = async () => { if (!form || !type) return; setBusy(true); setError(""); try { if (form.redaction) await api.updateRedaction(form.redaction.id, { redaction_type_id: type, redaction_text: form.text, starting_position: form.start }); else await api.createRedaction(activity.id, { redaction_type_id: type, redaction_text: form.text, starting_position: form.start }); setForm(null); setType(0); onChanged(); } catch (e) { setError(e instanceof ApiError ? e.message : "Request failed"); } finally { setBusy(false); } };
+  const generate = async () => {
+    setGenerating(true);
+    setError("");
+    setRecommendations([]);
+    try {
+      setRecommendations((await api.aiRecommendations(activity.id)).recommendations);
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Unable to generate AI recommendations.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+  const accept = async (recommendation: import("./types").AIRecommendation) => {
+    setBusy(true);
+    setError("");
+    try {
+      await api.acceptRecommendation(activity.id, recommendation);
+      setRecommendations(current => current.filter(item => item !== recommendation));
+      onChanged();
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Unable to accept recommendation.");
+    } finally {
+      setBusy(false);
+    }
+  };
+  const save = async () => { if (!form || !type) return; setBusy(true); setError(""); try { if (form.redaction) await api.updateRedaction(form.redaction.id, { redaction_type_id: type, redaction_text: form.text, starting_position: form.start }); else await api.createRedaction(activity.id, { redaction_type_id: type, redaction_text: form.text, starting_position: form.start }); setForm(null); setType(0); onChanged(); } catch (e) { setError(e instanceof ApiError ? e.message : "Request failed"); } finally { setBusy(false); } };
   const remove = async (redaction: Redaction) => { if (!confirm("Delete this redaction?")) return; setBusy(true); try { await api.deleteRedaction(redaction.id); onChanged(); } catch (e) { setError(e instanceof ApiError ? e.message : "Request failed"); } finally { setBusy(false); } };
   const orderedRedactions = [...activity.redactions].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime() || a.id - b.id);
   const formatDate = (value: string) => new Intl.DateTimeFormat(undefined, { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
-  return <article className="card activity-layout"><section><h3>{activity.activity_type}</h3><small>{activity.activity_uid}</small><p ref={ref} className="description" onMouseUp={choose}>{segmentText(activity.description, activity.redactions).map((segment, index) => segment.redactions.length ? <mark key={index} style={{ backgroundColor: segment.redactions.length > 1 ? styleFor("OVERLAP").background : styleFor(segment.redactions[0].redaction_type.name).background, borderColor: segment.redactions.length > 1 ? styleFor("OVERLAP").border : styleFor(segment.redactions[0].redaction_type.name).border }}>{segment.text}</mark> : <span key={index}>{segment.text}</span>)}</p><ul className="redactions">{orderedRedactions.map((redaction) => <li key={redaction.id}><time dateTime={redaction.created_at}>{formatDate(redaction.created_at)}</time> · <strong>{styleFor(redaction.redaction_type.name).label}</strong> · {redaction.source} · {redaction.user.first_name} {redaction.user.last_name} · “{redaction.redaction_text}” {!readOnly && <button disabled={busy} onClick={() => remove(redaction)}>Delete</button>}</li>)}</ul></section>{!readOnly && <aside className="redaction-panel"><h4>Redactions Panel</h4><button disabled={busy||generating} onClick={generate}>{generating?"Generating…":"Generate AI recommendations"}</button>{recommendations.length===0&&!generating&&<small>No pending AI recommendations</small>}{recommendations.map(r=><div className="recommendation" key={r.redaction_text+r.starting_position}><strong>{r.redaction_type}</strong>: “{r.redaction_text}”<p>{r.reason}</p><button disabled={busy} onClick={()=>accept(r)}>Accept</button><button disabled={busy} onClick={()=>setRecommendations(x=>x.filter(y=>y!==r))}>Reject</button></div>)}<div className="redaction-form"><label>Selected text<input readOnly value={form?.text ?? ""} placeholder="Select text in the description" /></label><label>Type<select value={type} onChange={(event) => setType(Number(event.target.value))}><option value={0}>Choose a type</option>{types.map((redactionType) => <option key={redactionType.id} value={redactionType.id}>{redactionType.name}</option>)}</select></label><button disabled={busy || !form?.text || !type} onClick={save}>Apply Redaction</button></div>{error && <p role="alert">{error}</p>}</aside>}</article>;
+  return <article className="card activity-layout"><section><h3>{activity.activity_type}</h3><small>{activity.activity_uid}</small><p ref={ref} className="description" onMouseUp={choose}>{segmentText(activity.description, activity.redactions).map((segment, index) => segment.redactions.length ? <mark key={index} style={{ backgroundColor: segment.redactions.length > 1 ? styleFor("OVERLAP").background : styleFor(segment.redactions[0].redaction_type.name).background, borderColor: segment.redactions.length > 1 ? styleFor("OVERLAP").border : styleFor(segment.redactions[0].redaction_type.name).border }}>{segment.text}</mark> : <span key={index}>{segment.text}</span>)}</p><ul className="redactions">{orderedRedactions.map((redaction) => <li key={redaction.id}><time dateTime={redaction.created_at}>{formatDate(redaction.created_at)}</time> · <strong>{styleFor(redaction.redaction_type.name).label}</strong> · {redaction.source} · {redaction.user.first_name} {redaction.user.last_name} · “{redaction.redaction_text}” {!readOnly && <button disabled={busy} onClick={() => remove(redaction)}>Delete</button>}</li>)}</ul></section>{!readOnly && <aside className="redaction-panel"><h4>Redactions Panel</h4><small>Unsaved suggestions — verify and accept individually.</small><button disabled={busy||generating} onClick={generate}>{generating?"Generating…":"Generate AI recommendations"}</button>{recommendations.length===0&&!generating&&<small>No pending AI recommendations</small>}{recommendations.map(r=><div className="recommendation" key={r.redaction_type+r.redaction_text+r.starting_position}><strong>{r.redaction_type}</strong>: “{r.redaction_text}”<p>{r.reason}</p><div className="supporting-rule"><strong>Supporting rule: {r.supporting_policy.section}</strong><p>{r.supporting_policy.excerpt}</p><small>Draft synthetic policy — verify before accepting.</small></div><button disabled={busy} onClick={()=>accept(r)}>Accept</button><button disabled={busy} onClick={()=>setRecommendations(x=>x.filter(y=>y!==r))}>Reject</button></div>)}<div className="redaction-form"><label>Selected text<input readOnly value={form?.text ?? ""} placeholder="Select text in the description" /></label><label>Type<select value={type} onChange={(event) => setType(Number(event.target.value))}><option value={0}>Choose a type</option>{types.map((redactionType) => <option key={redactionType.id} value={redactionType.id}>{redactionType.name}</option>)}</select></label><button disabled={busy || !form?.text || !type} onClick={save}>Apply Redaction</button></div>{error && <p role="alert">{error}</p>}</aside>}</article>;
 }

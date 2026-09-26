@@ -4,8 +4,16 @@ Learning-focused case review and text-redaction platform using synthetic records
 FastAPI, SQLAlchemy, and React. The `postgres-migration` branch uses PostgreSQL;
 `main` and the `sqlite-baseline` tag preserve the SQLite implementation.
 This branch now includes local reference retrieval with LangChain and pgvector.
-Retrieval is for inspection only; AI prompts and reviewer workflows are unchanged.
-See [retrieval setup and verification](docs/REFERENCE_RETRIEVAL.md).
+AI recommendations now use retrieved policy and examples, with a supporting rule
+shown for each proposal. Reviewers still explicitly accept or reject suggestions.
+**Analyze case** runs independent LangGraph branches for redaction proposals
+and a summary draft. Neither is saved until its separate reviewer approval.
+Opening a case or the case list never generates or saves a summary.
+See [retrieval setup](docs/REFERENCE_RETRIEVAL.md) and
+[grounded recommendation setup and API notes](docs/GROUNDED_AI_SETUP.md), plus
+[case analysis workflow, API, and verification](docs/CASE_ANALYSIS.md).
+For graph visualization and optional hosted traces, see
+[Studio and LangSmith setup](docs/LANGGRAPH_STUDIO.md).
 
 ## Local PostgreSQL setup
 
@@ -145,3 +153,10 @@ Start the frontend with `npm run dev` from `frontend/` on either version. Git
 switches code, not ignored `.env` files, the SQLite database, or Docker volumes.
 The SQLite baseline and PostgreSQL migration were pushed separately; they have
 not been merged. The retrieval milestone is a separate commit on the PostgreSQL branch.
+
+
+FastAPI:
+uv run --extra studio --env-file .env.postgres uvicorn app.main:app --reload
+
+Studio:
+uv run --extra studio --env-file .env --env-file .env.postgres langgraph dev --host 127.0.0.1
