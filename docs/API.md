@@ -22,6 +22,40 @@ Routers handle HTTP, services implement model/retrieval logic, and LangGraph
 coordinates independent branches. The graph calls services rather than the
 application's own HTTP endpoints. Keep these boundaries when studying the code.
 
+## Studying the code
+
+Follow one request at a time rather than reading every file in directory order:
+
+1. Open `models.py` and `schemas.py` to distinguish stored records from request,
+   response, and unsaved-draft shapes. Read `config.py` and `database.py` to see
+   how the same routes work with either database URL.
+2. Follow `GET /cases/{id}/activities` through `case_router.py`, `api.ts`, and
+   `ActivityCard.tsx`. Source descriptions stay immutable; saved redactions are
+   separate records rendered at exact character positions.
+3. Follow a manual selection through `selection.ts`, the create endpoint, and
+   `redaction_validation.py`. The server validates the span again before saving.
+4. Follow one recommendation through reference retrieval, `ai_service.py`, and
+   `recommendation_service.py`. Generation validates drafts; acceptance checks
+   current source text and policy evidence again before inserting a row.
+5. Read `case_analysis.py` alongside its graph in [case analysis](CASE_ANALYSIS.md).
+   Both branches share a snapshot, own their database sessions, and join before
+   returning drafts. Then follow the independent approval actions in `App.tsx`.
+6. Read the corresponding tests, then use optional Studio/LangSmith to inspect a
+   synthetic run. The tests use fake models; live model calls are separate.
+
+The implementation uses synchronous FastAPI/SQLAlchemy routes, React with Vite,
+LangChain's core retrieval interfaces, local MiniLM embeddings, Hugging Face/Qwen
+for generation, and LangGraph for coordination. SQLite supports core review;
+PostgreSQL/pgvector supports live retrieval and grounded analysis. These choices
+are intentional; a syllabus mentioning another framework or model provider does
+not require replacing them.
+
+Compose currently runs PostgreSQL only; the API and UI run on the host. Studio
+is a local development server, and LangSmith tracing is optional. No cloud
+infrastructure or production deployment configuration is tracked. A frontend
+production build is an artifact, not a deployed service. Authentication, cloud
+deployment, and cloud monitoring remain outside the existing implementation.
+
 ## Core endpoints (both databases)
 
 | Method and path | Behavior |

@@ -25,7 +25,9 @@ def retrieve_grounding(
     return documents, build_grounding(documents, activity.activity_uid)
 
 
-def valid(activity: ActivityText, types: Collection[str], recommendation: AIRecommendation) -> bool:
+def is_valid_recommendation(
+    activity: ActivityText, types: Collection[str], recommendation: AIRecommendation
+) -> bool:
     return recommendation.redaction_type in types and matches_span(
         activity.description, recommendation.redaction_text, recommendation.starting_position
     )
@@ -59,7 +61,7 @@ def validate_suggestions(
         if (
             key not in seen
             and rec.redaction_type in grounding.policies
-            and valid(activity, types, rec)
+            and is_valid_recommendation(activity, types, rec)
             and (rec.redaction_text, rec.starting_position) not in saved_spans
         ):
             seen.add(key)

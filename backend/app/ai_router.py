@@ -10,7 +10,11 @@ from app.ai_service import HuggingFaceRecommendationProvider, RecommendationProv
 from app.config import get_settings
 from app.database import get_db
 from app.models import Activity, Redaction, RedactionType, User
-from app.recommendation_service import retrieve_grounding, valid, validate_suggestions
+from app.recommendation_service import (
+    is_valid_recommendation,
+    retrieve_grounding,
+    validate_suggestions,
+)
 from app.reference_router import embedding_provider
 from app.reference_service import IndexUnavailable, ReferenceRetriever
 from app.schemas import (
@@ -108,7 +112,7 @@ def accept(
     if (
         not typ
         or recommendation.redaction_type not in LABELS
-        or not valid(activity, {typ.name: typ}, recommendation)
+        or not is_valid_recommendation(activity, {typ.name}, recommendation)
     ):
         raise HTTPException(422, "Recommendation does not match the activity")
     if not user:

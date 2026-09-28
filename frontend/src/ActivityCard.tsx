@@ -25,11 +25,11 @@ export function ActivityCard({
   draftRecommendations?: AIRecommendation[];
   onDraftsChanged?: (drafts: AIRecommendation[]) => void;
 }) {
-  const ref = useRef<HTMLParagraphElement>(null);
+  const descriptionRef = useRef<HTMLParagraphElement>(null);
   const [form, setForm] = useState<{ text: string; start: number } | null>(
     null,
   );
-  const [type, setType] = useState(0);
+  const [selectedTypeId, setSelectedTypeId] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [localRecommendations, setLocalRecommendations] = useState<
@@ -49,7 +49,8 @@ export function ActivityCard({
   };
   const [generating, setGenerating] = useState(false);
   const choose = () => {
-    const selection = ref.current && selectedRange(ref.current);
+    const selection =
+      descriptionRef.current && selectedRange(descriptionRef.current);
     if (selection)
       setForm({ text: selection.text, start: selection.starting_position });
   };
@@ -89,17 +90,17 @@ export function ActivityCard({
     }
   };
   const save = async () => {
-    if (!form || !type) return;
+    if (!form || !selectedTypeId) return;
     setBusy(true);
     setError("");
     try {
       await api.createRedaction(activity.id, {
-        redaction_type_id: type,
+        redaction_type_id: selectedTypeId,
         redaction_text: form.text,
         starting_position: form.start,
       });
       setForm(null);
-      setType(0);
+      setSelectedTypeId(0);
       onChanged();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Request failed");
@@ -134,30 +135,29 @@ export function ActivityCard({
       <section>
         <h3>{activity.activity_type}</h3>
         <small>{activity.activity_uid}</small>
-        <p ref={ref} className="description" onMouseUp={choose}>
+        <p ref={descriptionRef} className="description" onMouseUp={choose}>
           {segmentText(activity.description, activity.redactions).map(
-            (segment, index) =>
-              segment.redactions.length ? (
+            (segment, index) => {
+              if (segment.redactions.length === 0) {
+                return <span key={index}>{segment.text}</span>;
+              }
+              const style = styleFor(
+                segment.redactions.length > 1
+                  ? "OVERLAP"
+                  : segment.redactions[0].redaction_type.name,
+              );
+              return (
                 <mark
                   key={index}
                   style={{
-                    backgroundColor:
-                      segment.redactions.length > 1
-                        ? styleFor("OVERLAP").background
-                        : styleFor(segment.redactions[0].redaction_type.name)
-                            .background,
-                    borderColor:
-                      segment.redactions.length > 1
-                        ? styleFor("OVERLAP").border
-                        : styleFor(segment.redactions[0].redaction_type.name)
-                            .border,
+                    backgroundColor: style.background,
+                    borderColor: style.border,
                   }}
                 >
                   {segment.text}
                 </mark>
-              ) : (
-                <span key={index}>{segment.text}</span>
-              ),
+              );
+            },
           )}
         </p>
         <ul className="redactions">
@@ -188,25 +188,33 @@ export function ActivityCard({
           {recommendations.length === 0 && !generating && (
             <small>No pending AI recommendations</small>
           )}
-          {recommendations.map((r) => (
+          {recommendations.map((recommendation) => (
             <div
               className="recommendation"
-              key={r.redaction_type + r.redaction_text + r.starting_position}
+              key={
+                recommendation.redaction_type +
+                recommendation.redaction_text +
+                recommendation.starting_position
+              }
             >
-              <strong>{r.redaction_type}</strong>: “{r.redaction_text}”
-              <p>{r.reason}</p>
+              <strong>{recommendation.redaction_type}</strong>: “
+              {recommendation.redaction_text}”<p>{recommendation.reason}</p>
               <div className="supporting-rule">
-                <strong>Supporting rule: {r.supporting_policy.section}</strong>
-                <p>{r.supporting_policy.excerpt}</p>
+                <strong>
+                  Supporting rule: {recommendation.supporting_policy.section}
+                </strong>
+                <p>{recommendation.supporting_policy.excerpt}</p>
                 <small>Draft synthetic policy — verify before accepting.</small>
               </div>
-              <button disabled={busy} onClick={() => accept(r)}>
+              <button disabled={busy} onClick={() => accept(recommendation)}>
                 Accept
               </button>
               <button
                 disabled={busy}
                 onClick={() =>
-                  setRecommendations((x) => x.filter((y) => y !== r))
+                  setRecommendations((current) =>
+                    current.filter((item) => item !== recommendation),
+                  )
                 }
               >
                 Reject
@@ -225,8 +233,10 @@ export function ActivityCard({
             <label>
               Type
               <select
-                value={type}
-                onChange={(event) => setType(Number(event.target.value))}
+                value={selectedTypeId}
+                onChange={(event) =>
+                  setSelectedTypeId(Number(event.target.value))
+                }
               >
                 <option value={0}>Choose a type</option>
                 {types.map((redactionType) => (
@@ -236,7 +246,10 @@ export function ActivityCard({
                 ))}
               </select>
             </label>
-            <button disabled={busy || !form?.text || !type} onClick={save}>
+            <button
+              disabled={busy || !form?.text || !selectedTypeId}
+              onClick={save}
+            >
               Apply Redaction
             </button>
           </div>

@@ -11,7 +11,7 @@ from app.schemas import RedactionCreate, RedactionResponse, RedactionTypeRespons
 router = APIRouter(tags=["redactions"])
 
 
-def validate(
+def validate_manual_redaction(
     db: Session, activity: Activity | None, type_id: int, text: str, start: int
 ) -> RedactionType:
     if activity is None:
@@ -31,10 +31,10 @@ def ensure_case_open(activity: Activity) -> None:
         raise HTTPException(409, "Closed cases cannot be changed")
 
 
-def loaded(db: Session, rid: int) -> Redaction | None:
+def load_redaction(db: Session, redaction_id: int) -> Redaction | None:
     return db.scalar(
         select(Redaction)
-        .where(Redaction.id == rid)
+        .where(Redaction.id == redaction_id)
         .options(selectinload(Redaction.redaction_type), selectinload(Redaction.user))
     )
 
@@ -60,7 +60,7 @@ def create(activity_id: int, payload: RedactionCreate, db: Session = Depends(get
     user = db.scalar(select(User).where(User.email == get_settings().demo_reviewer_email))
     if user is None:
         raise HTTPException(500, "Configured demo reviewer does not exist")
-    typ = validate(
+    typ = validate_manual_redaction(
         db, activity, payload.redaction_type_id, payload.redaction_text, payload.starting_position
     )
     duplicate = db.scalar(
@@ -84,7 +84,7 @@ def create(activity_id: int, payload: RedactionCreate, db: Session = Depends(get
     )
     db.add(item)
     db.commit()
-    return loaded(db, item.id)
+    return load_redaction(db, item.id)
 
 
 @router.patch("/redactions/{redaction_id}", response_model=RedactionResponse)
@@ -98,7 +98,7 @@ def update(redaction_id: int, payload: RedactionUpdate, db: Session = Depends(ge
     values = payload.model_dump(exclude_unset=True)
     if not values:
         raise HTTPException(422, "At least one editable field is required")
-    typ = validate(
+    typ = validate_manual_redaction(
         db,
         item.activity,
         values.get("redaction_type_id", item.redaction_type_id),
@@ -109,7 +109,7 @@ def update(redaction_id: int, payload: RedactionUpdate, db: Session = Depends(ge
     item.redaction_text = values.get("redaction_text", item.redaction_text)
     item.starting_position = values.get("starting_position", item.starting_position)
     db.commit()
-    return loaded(db, item.id)
+    return load_redaction(db, item.id)
 
 
 @router.delete("/redactions/{redaction_id}", status_code=204)
